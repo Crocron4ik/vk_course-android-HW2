@@ -11,7 +11,7 @@ import com.example.hw2vk.R
 class GifRepository(private val context: Context) {
 
     private val api = Retrofit.Builder()
-        .baseUrl(context.getString(R.string.giphy_base_url))  // Из ресурсов
+        .baseUrl(context.getString(R.string.giphy_base_url))
         .addConverterFactory(GsonConverterFactory.create())
         .build()
         .create(GifApi::class.java)

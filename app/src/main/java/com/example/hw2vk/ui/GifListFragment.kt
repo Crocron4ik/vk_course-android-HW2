@@ -53,7 +53,6 @@ class GifListFragment : Fragment() {
     }
 }
 
-// Фабрика для ViewModel
 class GifViewModelFactory(
     private val application: android.app.Application
 ) : ViewModelProvider.Factory {
