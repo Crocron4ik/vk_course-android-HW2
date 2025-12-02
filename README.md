@@ -157,9 +157,11 @@ if (gifs.isEmpty() && !isLoading && error == null) {
     }
 }
 ```
+
 При первом запуске, когда данных еще нет и загрузка не началась, показывается индикатор по центру.
 - Пагинация: индикатор внизу списка  ✅
-'''
+
+```
 if (isLoading && gifs.isNotEmpty()) {
     item {
         Box(
@@ -213,6 +215,7 @@ val aspectRatio = remember(gif.id) {
     if (width > 0) width / height else 1f
 }
 ```
+
 ```
 Card(
     modifier = Modifier
