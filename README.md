@@ -43,3 +43,195 @@
 - Анимированные GIF: [Giphy API](https://developers.giphy.com/)
 - [Github of Public APIs](https://github.com/public-apis/public-apis)
 - Любое API, которое интересно использовать и к которому может получить доступ преподаватель
+
+# Отчёт 
+
+## Реализация необходимых требований
+
+### 1. Отображение изображений, полученных от API. ✅
+
+```
+interface GifApi {
+    @GET("v1/gifs/trending")
+    suspend fun getTrending(
+        @Query("api_key") apiKey: String = "sdEKI1pMO2e0OeqDCU51oQmMhqIxraKm",
+        @Query("limit") limit: Int = 20,
+        @Query("offset") offset: Int = 0
+    ): GiphyResponse
+}
+```
+Используется LazyColumn для отображения списка GIF-карточек, полученных от Giphy API через Retrofit.
+
+```
+itemsIndexed(gifs) { index, gif ->
+    GifCard(
+        gif = gif,
+        index = index,
+        onClick = {
+            Toast.makeText(
+                context,
+                "GIF №${index + 1}",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    )
+}
+```
+
+### 2. Умение обрабатывать состояние загрузки данных. ✅
+В зависимости от состояния isLoading и наличия данных показывается либо индикатор загрузки, либо контент.
+```
+Box(Modifier.fillMaxSize()) {
+    when {
+        gifs.isEmpty() -> 
+            Box(Modifier.fillMaxSize(), Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        
+        isLoading ->
+            Box(Modifier.fillMaxSize(), Alignment.Center) {
+                CircularProgressIndicator() 
+            }
+    }
+}
+```
+
+### 3. Обрабатывать ошибки загрузки. ✅
+<img width="305" height="676" alt="image" src="https://github.com/user-attachments/assets/33d70268-3e19-4455-9600-55d8fca79552" />
+
+При ошибке сети показывается заглушка с описанием ошибки и кнопкой для повторной попытки.
+```
+@Composable
+fun ErrorScreen(error: String, onRetry: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(text = "Ошибка: $error")
+        Button(onClick = onRetry) {
+            Text("Повторить")
+        }
+    }
+}
+```
+
+### 4. Кеширование данных. ✅
+
+```
+val gifs = mutableStateOf(emptyList<GifItem>()) 
+```
+
+```
+AsyncImage(
+    model = ImageRequest.Builder(context)
+        .data(gif.images.fixed_height.url)
+        .crossfade(true)
+        .build() 
+)
+```
+
+Загруженные GIF сохраняются в mutableStateOf, а изображения кэшируются библиотекой Coil.
+
+### 5. Уведомления с информацией о картинке (порядковый номер в списке). ✅
+<img width="305" height="274" alt="image" src="https://github.com/user-attachments/assets/69edbee4-d74b-4d70-a35c-f088686f07ca" />
+
+```
+onClick = {
+    Toast.makeText(
+        context,
+        "GIF №${index + 1}",
+        Toast.LENGTH_SHORT
+    ).show()
+}
+```
+При клике на карточку показывается Toast с порядковым номером GIF в списке.
+## Реализация пункта "Требования"
+
+1. Состояния интерфейса
+- Стартовая загрузка: индикатор прогресса по центру ✅
+```
+if (gifs.isEmpty() && !isLoading && error == null) {
+    Box(Modifier.fillMaxSize(), Alignment.Center) {
+        CircularProgressIndicator()
+    }
+}
+```
+При первом запуске, когда данных еще нет и загрузка не началась, показывается индикатор по центру.
+- Пагинация: индикатор внизу списка  ✅
+'''
+if (isLoading && gifs.isNotEmpty()) {
+    item {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+    }
+}
+```
+При догрузке новых данных индикатор показывается внизу списка под существующими элементами.
+- Отображение контента ✅
+- Ошибки: заглушка с кнопкой повтора ✅
+- Пагинация с бесконечным скроллом и индикатором прогресса внизу страницы при загрузке ✅
+```
+LaunchedEffect(listState) {
+    snapshotFlow {
+        listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
+    }.collect { index ->
+        if (index != null && index >= gifs.size - 3) {
+            viewModel.loadMore() // Автодогрузка
+        }
+    }
+}
+```
+При прокрутке к предпоследним элементам автоматически запускается загрузка следующей страницы.
+
+2. Техническая реализация
+- Сохранение данных при повороте экрана ✅
+```
+class GifViewModel : ViewModel() {
+    val gifs = repository.gifs 
+    
+    fun loadGifs() {
+        viewModelScope.launch { 
+            repository.loadGifs()
+        }
+    }
+}
+```
+ViewModel сохраняет состояние при смене конфигурации, а viewModelScope автоматически отменяет корутины.
+
+- Динамическое масштабирование изображений (сохранение пропорций) ✅
+```
+val aspectRatio = remember(gif.id) {
+    val width = gif.images.fixed_height.width.toFloatOrNull() ?: 200f
+    val height = gif.images.fixed_height.height.toFloatOrNull() ?: 200f
+    if (width > 0) width / height else 1f
+}
+```
+```
+Card(
+    modifier = Modifier
+        .fillMaxWidth()
+        .aspectRatio(aspectRatio) 
+)
+```
+Для каждой карточки рассчитывается соотношение сторон на основе данных из API .
+- Обязательно: Fragment/Compose ✅
+- Кэширование данных и изображений ✅
+
+
+3. Ограничения
+- Обязательно: использование ресурсов, отсутствие хардкода ✅
+- Запрещены логи (Log.*) в финальной версии ✅
+
+## Дополнительные решения(выполнение "плюсы")
+
+- Поддержка анимированных изображений (GIF) ✅
+Использование GifDecoder.Factory() позволяет корректно отображать анимированные GIF-файлы.
+- Pinterest-стиль (разные пропорции карточек) ✅
+Каждый GIF из API имеет свои размеры, что позволяет создать Pinterest-подобный интерфейс с разными пропорциями карточек.
