@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">HW2 VK</string>
+    <string name="giphy_api_key">sdEKI1pMO2e0OeqDCU51oQmMhqIxraKm</string>
+    <string name="giphy_base_url">https://api.giphy.com/</string>
+</resources>
