@@ -157,9 +157,11 @@ if (gifs.isEmpty() && !isLoading && error == null) {
     }
 }
 ```
+
 При первом запуске, когда данных еще нет и загрузка не началась, показывается индикатор по центру.
 - Пагинация: индикатор внизу списка  ✅
-'''
+
+```
 if (isLoading && gifs.isNotEmpty()) {
     item {
         Box(
@@ -213,6 +215,7 @@ val aspectRatio = remember(gif.id) {
     if (width > 0) width / height else 1f
 }
 ```
+
 ```
 Card(
     modifier = Modifier
@@ -235,3 +238,6 @@ Card(
 Использование GifDecoder.Factory() позволяет корректно отображать анимированные GIF-файлы.
 - Pinterest-стиль (разные пропорции карточек) ✅
 Каждый GIF из API имеет свои размеры, что позволяет создать Pinterest-подобный интерфейс с разными пропорциями карточек.
+* допольнительный(немного на другое понимание условия) вариант pinterest-стиля с LazyVerticalStaggeredGrid.
+<img width="304" height="679" alt="image" src="https://github.com/user-attachments/assets/16925ead-f5cc-4ef2-925c-7c1f06324269" />
+
