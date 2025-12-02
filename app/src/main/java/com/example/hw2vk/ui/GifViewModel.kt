@@ -1,13 +1,14 @@
 package com.example.hw2vk.ui
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hw2vk.data.GifRepository
 import kotlinx.coroutines.launch
 
-class GifViewModel : ViewModel() {
+class GifViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val repository = GifRepository()
+    private val repository = GifRepository(application.applicationContext)
     val gifs = repository.gifs
     val isLoading = repository.isLoading
     val error = repository.error

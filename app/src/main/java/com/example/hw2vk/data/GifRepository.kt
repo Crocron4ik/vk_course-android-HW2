@@ -1,15 +1,17 @@
 package com.example.hw2vk.data
 
+import android.content.Context
 import androidx.compose.runtime.mutableStateOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import com.example.hw2vk.R
 
-class GifRepository {
+class GifRepository(private val context: Context) {
 
     private val api = Retrofit.Builder()
-        .baseUrl("https://api.giphy.com/")
+        .baseUrl(context.getString(R.string.giphy_base_url))  // Из ресурсов
         .addConverterFactory(GsonConverterFactory.create())
         .build()
         .create(GifApi::class.java)
@@ -36,7 +38,7 @@ class GifRepository {
                 offset += response.data.size
             }
         } catch (e: Exception) {
-            error.value = e.message ?: "Ошибка загрузки"
+            error.value = e.message ?: context.getString(R.string.loading_error)
         } finally {
             isLoading.value = false
         }

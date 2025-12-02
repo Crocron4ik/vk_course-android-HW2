@@ -1,110 +1,135 @@
 package com.example.hw2vk.ui
 
 import android.widget.Toast
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.integerResource
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.decode.GifDecoder
 import coil.request.ImageRequest
+import com.example.hw2vk.R
 import com.example.hw2vk.data.GifItem
 import kotlinx.coroutines.flow.distinctUntilChanged
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun GifListScreen(viewModel: GifViewModel = viewModel()) {
+fun GifListScreen(
+    viewModel: GifViewModel = viewModel(),
+    onGifClick: (GifItem) -> Unit = {}
+) {
     val gifs by viewModel.gifs
     val isLoading by viewModel.isLoading
     val error by viewModel.error
     val context = LocalContext.current
-    val listState = rememberLazyListState()
-
-    LaunchedEffect(listState) {
-        snapshotFlow {
-            listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
-        }.distinctUntilChanged().collect { index ->
-            if (index != null && index >= gifs.size - 3 && !isLoading && error == null) {
-                viewModel.loadMore()
-            }
-        }
-    }
 
     LaunchedEffect(Unit) {
-        if (gifs.isEmpty()) {
-            viewModel.loadGifs()
-        }
+        if (gifs.isEmpty()) viewModel.loadGifs()
     }
 
-    Box(Modifier.fillMaxSize()) {
-        when {
-            error != null && gifs.isEmpty() ->
-                ErrorScreen(error = error!!, onRetry = { viewModel.retry() })
+    when {
+        error != null && gifs.isEmpty() ->
+            ErrorScreen(error = error!!, onRetry = { viewModel.retry() })
 
-            gifs.isEmpty() ->
-                Box(Modifier.fillMaxSize(), Alignment.Center) {
-                    CircularProgressIndicator()
-                }
+        gifs.isEmpty() ->
+            Box(Modifier.fillMaxSize(), Alignment.Center) {
+                CircularProgressIndicator()
+            }
 
-            else -> LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                itemsIndexed(gifs) { index, gif ->
+        else ->
+            MasonryGifGrid(
+                items = gifs,
+                onLoadMore = {
+                    if (!isLoading && error == null) viewModel.loadMore()
+                },
+                itemContent = { index, gif ->
                     GifCard(
                         gif = gif,
-                        index = index,
                         onClick = {
                             Toast.makeText(
                                 context,
-                                "GIF №${index + 1}",
+                                context.getString(R.string.gif_number, index + 1),
                                 Toast.LENGTH_SHORT
                             ).show()
+                            onGifClick(gif)
                         }
                     )
                 }
+            )
+    }
+}
 
-                if (isLoading) {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator()
-                        }
-                    }
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun <T> MasonryGifGrid(
+    items: List<T>,
+    onLoadMore: () -> Unit,
+    itemContent: @Composable (index: Int, item: T) -> Unit
+) {
+    val gridState = rememberLazyStaggeredGridState()
+    LaunchedEffect(gridState) {
+        snapshotFlow {
+            gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
+        }.distinctUntilChanged()
+            .collect { last ->
+                if (last != null && last >= items.size - 3) {
+                    onLoadMore()
                 }
             }
+    }
+
+    LazyVerticalStaggeredGrid(
+        columns = StaggeredGridCells.Fixed(integerResource(id = R.integer.grid_column_count)),
+        state = gridState,
+        verticalItemSpacing = dimensionResource(id = R.dimen.grid_spacing),
+        horizontalArrangement = Arrangement.spacedBy(dimensionResource(id = R.dimen.grid_spacing)),
+        contentPadding = PaddingValues(dimensionResource(id = R.dimen.grid_padding)),
+        modifier = Modifier.fillMaxSize()
+    ) {
+        items(items.size) { index ->
+            itemContent(index, items[index])
         }
     }
 }
 
 @Composable
-fun GifCard(gif: GifItem, index: Int, onClick: () -> Unit) {
-    val aspectRatio = remember(gif.id) {
-        val width = gif.images.fixed_height.width.toFloatOrNull() ?: 200f
-        val height = gif.images.fixed_height.height.toFloatOrNull() ?: 200f
-        if (width > 0) width / height else 1f // width/height для aspectRatio
-    }
-
+fun GifCard(
+    gif: GifItem,
+    onClick: () -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(aspectRatio)
             .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        elevation = CardDefaults.cardElevation(dimensionResource(id = R.dimen.card_elevation)),
         shape = MaterialTheme.shapes.medium
     ) {
         AsyncImage(
@@ -115,7 +140,7 @@ fun GifCard(gif: GifItem, index: Int, onClick: () -> Unit) {
                 .build(),
             contentDescription = gif.title,
             contentScale = ContentScale.FillWidth,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxWidth()
         )
     }
 }
@@ -125,16 +150,16 @@ fun ErrorScreen(error: String, onRetry: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(32.dp),
+            .padding(dimensionResource(id = R.dimen.padding_xxlarge)),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Ошибка",
+            text = stringResource(id = R.string.error),
             style = MaterialTheme.typography.headlineSmall
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(Modifier.height(dimensionResource(id = R.dimen.padding_large)))
 
         Text(
             text = error,
@@ -142,10 +167,13 @@ fun ErrorScreen(error: String, onRetry: () -> Unit) {
             color = MaterialTheme.colorScheme.error
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(Modifier.height(dimensionResource(id = R.dimen.padding_xxlarge)))
 
-        Button(onClick = onRetry) {
-            Text("Повторить")
+        Button(
+            onClick = onRetry,
+            modifier = Modifier.height(dimensionResource(id = R.dimen.button_height))
+        ) {
+            Text(text = stringResource(id = R.string.retry))
         }
     }
 }

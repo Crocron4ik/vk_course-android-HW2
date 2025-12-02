@@ -13,7 +13,8 @@ data class GifItem(
 )
 
 data class Images(
-    @SerializedName("fixed_height") val fixed_height: ImageData
+    @SerializedName("fixed_height") val fixed_height: ImageData,
+    @SerializedName("original") val original: ImageData
 )
 
 data class ImageData(
